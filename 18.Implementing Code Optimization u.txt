@@ -1,0 +1,128 @@
+18.Implementing Code Optimization using LEX and YACC
+
+lex
+%{
+#include "parser.tab.h"
+#include <string.h>
+#include <stdlib.h>
+%}
+%%
+[a-zA-Z][a-zA-Z0-9]*    { yylval.str = strdup(yytext); return ID; }
+[0-9]+                  { yylval.str = strdup(yytext); return NUMBER; }
+[\+\-\*/\(\)=]          { return yytext[0]; }
+[ \t\n]                 ;
+.                       { printf("Invalid character: %s\n", yytext); }
+%%
+int yywrap() { return 1; }
+
+
+yacc
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int yylex(void);
+int yyerror(const char *msg);
+
+
+int tempVarCount = 1;
+
+char* newTemp() {
+    char* temp = (char*)malloc(10);
+    sprintf(temp, "t%d", tempVarCount++);
+    return temp;
+}
+
+// Optimizes expression based on algebraic identities
+char* optimizeExpression(char* op1, char* operation, char* op2) {
+    // x + 0 = x, 0 + x = x
+    if (strcmp(operation, "+") == 0) {
+        if (strcmp(op1, "0") == 0) {
+            printf("Optimization applied: 0 + x = x\n");
+            return op2;
+        }
+        if (strcmp(op2, "0") == 0) {
+            printf("Optimization applied: x + 0 = x\n");
+            return op1;
+        }
+    }
+    
+    // x - 0 = x
+    if (strcmp(operation, "-") == 0 && strcmp(op2, "0") == 0) {
+        printf("Optimization applied: x - 0 = x\n");
+        return op1;
+    }
+    
+    // x * 1 = x, 1 * x = x
+    if (strcmp(operation, "*") == 0) {
+        if (strcmp(op1, "1") == 0) {
+            printf("Optimization applied: 1 * x = x\n");
+            return op2;
+        }
+        if (strcmp(op2, "1") == 0) {
+            printf("Optimization applied: x * 1 = x\n");
+            return op1;
+        }
+        // x * 0 = 0, 0 * x = 0
+        if (strcmp(op1, "0") == 0 || strcmp(op2, "0") == 0) {
+            printf("Optimization applied: multiplication by 0 = 0\n");
+            return "0";
+        }
+    }
+    
+    // x / 1 = x
+    if (strcmp(operation, "/") == 0 && strcmp(op2, "1") == 0) {
+        printf("Optimization applied: x / 1 = x\n");
+        return op1;
+    }
+    
+    // No optimization, generate new temp
+    char* temp = newTemp();
+    printf("Generated: %s = %s %s %s\n", temp, op1, operation, op2);
+    return temp;
+}
+
+%}
+
+%union {
+    char* str;
+}
+
+%token <str> ID NUMBER
+%type <str> expr term factor
+
+%%
+start:
+    ID '=' expr      { printf("Final assignment: %s = %s\n", $1, $3); }
+    ;
+
+expr:
+    expr '+' term    { $$ = optimizeExpression($1, "+", $3); }
+    | expr '-' term  { $$ = optimizeExpression($1, "-", $3); }
+    | term           { $$ = $1; }
+    ;
+
+term:
+    term '*' factor  { $$ = optimizeExpression($1, "*", $3); }
+    | term '/' factor { $$ = optimizeExpression($1, "/", $3); }
+    | factor         { $$ = $1; }
+    ;
+
+factor:
+    '(' expr ')'     { $$ = $2; }
+    | ID             { $$ = $1; }
+    | NUMBER         { $$ = $1; }
+    ;
+%%
+
+int yyerror(const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+    return 0;
+}
+
+int main() {
+    printf("Enter an arithmetic expression (e.g., a = b + 1 * 0):\n");
+    yyparse();
+    return 0;
+}

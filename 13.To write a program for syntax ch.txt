@@ -1,0 +1,103 @@
+13.To write a program for syntax checking of a subset of a given language using LEX and
+YACC. 
+
+
+lex
+%{
+#include "parser.tab.h"
+#include<stdio.h>
+#include<stdlib.h>
+%}
+%%
+[ \t\n]+ ;
+"int"|"float"|"char" { return TYPE; }
+"if" { return IF; }
+"else" { return ELSE; }
+"while" { return WHILE; }
+[a-zA-Z_][a-zA-Z0-9_]* { return IDENTIFIER; }
+"=" { return ASSIGN; }
+";" { return SEMICOLON; }
+"(" { return LPAREN; }
+")" { return RPAREN; }
+"{" { return LBRACE; }
+"}" { return RBRACE; }
+[0-9]+(\.[0-9]+)? { return NUMBER; }
+[+\-*/] { return OPERATOR; }
+. { return yytext[0]; } //returns ASCII value
+%%
+int yywrap() { return 1; }
+
+
+
+yacc
+%{
+#include <stdio.h>
+#include <stdlib.h>
+void yyerror(const char *s);
+int yylex(void);
+%}
+
+%token TYPE IDENTIFIER ASSIGN SEMICOLON IF ELSE WHILE
+%token LPAREN RPAREN LBRACE RBRACE NUMBER OPERATOR
+
+%%
+
+program: 
+    stmt_list { printf("Valid syntax\n"); }
+    ;
+
+stmt_list: 
+    stmt
+    | stmt_list stmt
+    ;
+
+stmt: 
+    declaration
+    | assignment
+    | conditional
+    | loop
+    | SEMICOLON  /* Empty statement */
+    ;
+
+declaration: 
+    TYPE IDENTIFIER SEMICOLON
+    ;
+
+assignment: 
+    IDENTIFIER ASSIGN expression SEMICOLON
+    ;
+
+expression: 
+    term
+    | expression OPERATOR term
+    ;
+
+term: 
+    NUMBER
+    | IDENTIFIER
+    | LPAREN expression RPAREN
+    ;
+
+conditional: 
+    IF LPAREN condition RPAREN LBRACE stmt_list RBRACE
+    | IF LPAREN condition RPAREN LBRACE stmt_list RBRACE ELSE LBRACE stmt_list RBRACE
+    ;
+
+loop: 
+    WHILE LPAREN condition RPAREN LBRACE stmt_list RBRACE
+    ;
+
+condition: 
+    expression
+    ;
+
+%%
+
+void yyerror(const char *s) {
+    fprintf(stderr, "Syntax error: %s\n", s);
+}
+
+int main() {
+    yyparse();
+    return 0;
+}

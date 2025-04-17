@@ -1,0 +1,40 @@
+11.line,tab,space,word count
+
+%{
+#include <stdio.h>
+int line_count = 0;
+int tab_count = 0;
+int space_count = 0;
+int word_count = 0;
+int char_count = 0;
+%}
+%%
+\n { line_count++; char_count++; }
+\t { tab_count++; char_count++; }
+[ ] { space_count++; char_count++; }
+[a-zA-Z0-9]+ { word_count++; char_count += yyleng; }
+. { char_count++; }
+%%
+int main(int argc, char *argv[]) {
+ if (argc < 2) {
+   printf("Usage: %s <input_file>\n", argv[0]);
+   return 1;
+ }
+ FILE *file = fopen(argv[1], "r");
+ if (!file) {
+   perror("Error opening file");
+   return 1;
+ }
+ yyin = file;
+ yylex();
+ fclose(file);
+ printf("Lines: %d\n", line_count);
+ printf("Tabs: %d\n", tab_count);
+ printf("Spaces: %d\n", space_count);
+ printf("Words: %d\n", word_count);
+ printf("Characters: %d\n", char_count);
+ return 0;
+}
+int yywrap() {
+ return 1;
+}

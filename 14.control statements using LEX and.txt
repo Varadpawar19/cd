@@ -1,0 +1,131 @@
+14.control statements using LEX and YACC.
+
+lex
+%{
+#include "parser.tab.h"
+%}
+%%
+if      { return IF; }
+else    { return ELSE; }
+while   { return WHILE; }
+for     { return FOR; }
+"("     { return LPAREN; }
+")"     { return RPAREN; }
+"{"     { return LBRACE; }
+"}"     { return RBRACE; }
+";"     { return SEMICOLON; }
+"="     { return ASSIGN; }
+"<"     { return RELOP; }
+">"     { return RELOP; }
+"=="    { return RELOP; }
+"!="    { return RELOP; }
+"<="    { return RELOP; }
+">="    { return RELOP; }
+"+"     { return OP; }
+"-"     { return OP; }
+"*"     { return OP; }
+"/"     { return OP; }
+[a-zA-Z_][a-zA-Z0-9_]*  { return ID; }
+[0-9]+  { return NUM; }
+[ \t\n]  { /* ignore whitespace */ }
+.       { return yytext[0]; }
+%%
+int yywrap() {
+    return 1;
+}
+
+yacc
+%{
+#include <stdio.h>
+#include <stdlib.h>
+int yylex(void);
+void yyerror(const char *s);
+int hasError = 0;
+extern FILE* yyin;
+%}
+
+%token IF ELSE WHILE FOR
+%token LPAREN RPAREN LBRACE RBRACE SEMICOLON ASSIGN
+%token RELOP OP ID NUM
+
+%%
+program:
+    statement_list
+    ;
+
+statement_list:
+    statement
+    | statement_list statement
+    ;
+
+statement:
+    selection_statement
+    | iteration_statement
+    | expression SEMICOLON
+    | SEMICOLON
+    ;
+
+selection_statement:
+    IF LPAREN condition RPAREN LBRACE statement_list RBRACE
+    | IF LPAREN condition RPAREN LBRACE statement_list RBRACE ELSE LBRACE statement_list RBRACE
+    ;
+
+iteration_statement:
+    WHILE LPAREN condition RPAREN LBRACE statement_list RBRACE
+    | FOR LPAREN expression SEMICOLON condition SEMICOLON expression RPAREN LBRACE statement_list RBRACE
+    ;
+
+condition:
+    expression RELOP expression
+    | expression
+    ;
+
+expression:
+    ID ASSIGN expression
+    | simple_expression
+    ;
+
+simple_expression:
+    term
+    | simple_expression OP term
+    ;
+
+term:
+    factor
+    | term OP factor
+    ;
+
+factor:
+    LPAREN expression RPAREN
+    | ID
+    | NUM
+    ;
+%%
+
+void yyerror(const char *s) {
+    hasError = 1;
+    printf("Syntax Error: %s\n", s);
+}
+
+int main(int argc, char* argv[]) {
+    if (argc > 1) {
+        yyin = fopen(argv[1], "r");
+        if (!yyin) {
+            printf("Cannot open file %s\n", argv[1]);
+            return 1;
+        }
+    } else {
+        printf("Enter a control statement to check syntax:\n");
+        yyin = stdin;
+    }
+    
+    yyparse();
+    
+    if (!hasError)
+        printf("Syntax is correct!\n");
+    
+    if (argc > 1)
+        fclose(yyin);
+        
+    return 0;
+}
