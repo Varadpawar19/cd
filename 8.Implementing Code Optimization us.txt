@@ -1,0 +1,148 @@
+8.  Implementing Code Optimization using LEX and YACC
+
+optimizer.l
+
+%{
+#include "y.tab.h"
+#include <string.h>
+
+extern int yylval;
+%}
+
+%option noyywrap
+
+%%
+
+[a-zA-Z][a-zA-Z0-9]* {
+    yylval = strdup(yytext);
+    return ID;
+}
+
+[0-9]+ {
+    yylval = strdup(yytext);
+    return NUMBER;
+}
+
+[+\-*/=()]{ return yytext[0]; }
+
+[ \t\n] ; // Ignore whitespace
+
+. { printf("Invalid character: %s\n", yytext); }
+
+----------------------------------------------------------------------------------------------------------
+
+optimizer.y
+
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int tempVarCount = 1;
+
+void yyerror(const char *msg);
+int yylex();
+
+char* newTemp() {
+    char* temp = (char*)malloc(10);
+    sprintf(temp, "t%d", tempVarCount++);
+    return temp;
+}
+
+void optimizeCode(char* result, char* op1, char* op, char* op2) {
+    if (strcmp(op, "*") == 0) {
+        if (strcmp(op1, "1") == 0) {
+            printf("%s = %s\n", result, op2);
+            return;
+        } else if (strcmp(op2, "1") == 0) {
+            printf("%s = %s\n", result, op1);
+            return;
+        }
+    } else if (strcmp(op, "+") == 0 && strcmp(op2, "0") == 0) {
+        printf("%s = %s\n", result, op1);
+        return;
+    } else if (strcmp(op, "+") == 0 && strcmp(op1, "0") == 0) {
+        printf("%s = %s\n", result, op2);
+        return;
+    }
+
+    printf("%s = %s %s %s\n", result, op1, op, op2);
+}
+%}
+
+%union {
+    char* str;
+}
+
+%token <str> ID NUMBER
+
+%type <str> expr term factor
+
+%%
+
+stmt:
+    ID '=' expr    { printf("%s = %s\n", $1, $3); }
+    ;
+
+expr:
+      expr '+' term {
+        char* temp = newTemp();
+        optimizeCode(temp, $1, "+", $3);
+        $$ = temp;
+      }
+    | expr '-' term {
+        char* temp = newTemp();
+        optimizeCode(temp, $1, "-", $3);
+        $$ = temp;
+      }
+    | term { $$ = $1; }
+    ;
+
+term:
+      term '*' factor {
+        char* temp = newTemp();
+        optimizeCode(temp, $1, "*", $3);
+        $$ = temp;
+      }
+    | term '/' factor {
+        char* temp = newTemp();
+        optimizeCode(temp, $1, "/", $3);
+        $$ = temp;
+      }
+    | factor { $$ = $1; }
+    ;
+
+factor:
+      '(' expr ')' { $$ = $2; }
+    | ID           { $$ = strdup($1); }
+    | NUMBER       { $$ = strdup($1); }
+    ;
+
+%%
+
+int main() {
+    printf("Enter an arithmetic expression (e.g., a = b + 0 * 1):\n");
+    yyparse();
+    return 0;
+}
+
+void yyerror(const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+}
+
+----------------------------------------------------------------------------------------------------------
+
+Compilation and Execution:
+1. Compile the YACC file:
+yacc -d optimizer.y
+2. Compile the LEX file:
+lex optimizer.l
+3. Compile both outputs with GCC:
+gcc lex.yy.c y.tab.c -o optimizer -ll -ly
+4. Run the program:
+./optimizer
+5. Enter an arithmetic expression like x = a + 0 and observe the optimized output.
+Expected Output Example:
+Enter an arithmetic expression:
+x = a + 0
+Optimized: x = a

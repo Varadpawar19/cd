@@ -1,0 +1,103 @@
+3. To write a program for syntax checking of a subset of a given language using LEX and
+YACC.
+To verify the syntactical correctness of statements based on predefined grammar rules. 
+
+1 lexical_analyzer.l
+
+%{
+#include "y.tab.h"
+%}
+%%
+[ \t\n]+ ; /* Ignore whitespace */
+"int"|"float"|"char" { return TYPE; }
+[a-zA-Z_][a-zA-Z0-9_]* { return IDENTIFIER; }
+"=" { return ASSIGN; }
+";" { return SEMICOLON; }
+"if" { return IF; }
+"else" { return ELSE; }
+"while" { return WHILE; }
+"(" { return LPAREN; }
+")" { return RPAREN; }
+"{" { return LBRACE; }
+"}" { return RBRACE; }
+[0-9]+(\.[0-9]+)? { return NUMBER; }
+[+\-*/] { return OPERATOR; }
+. { return yytext[0]; } /* Any other character */
+%%
+int yywrap() { return 1; }
+-----------------------------------------------------------------------------------------------
+2. syntax_checker.y
+
+%{
+#include <stdio.h>
+#include <stdlib.h>
+%}
+%token TYPE IDENTIFIER ASSIGN SEMICOLON IF ELSE WHILE LPAREN RPAREN LBRACE
+RBRACE NUMBER OPERATOR
+%%
+program: stmt_list { printf("Syntax is correct.\n"); }
+ ;
+stmt_list: stmt
+ | stmt_list stmt
+ ;
+stmt: declaration
+ | assignment
+ | conditional
+ | loop
+ ;
+declaration: TYPE IDENTIFIER SEMICOLON
+ ;
+assignment: IDENTIFIER ASSIGN expression SEMICOLON
+ ;
+expression: NUMBER
+ | IDENTIFIER
+ | expression OPERATOR expression
+ ;
+conditional: IF LPAREN condition RPAREN LBRACE stmt_list RBRACE
+ | IF LPAREN condition RPAREN LBRACE stmt_list RBRACE ELSE
+LBRACE stmt_list RBRACE
+ ;
+loop: WHILE LPAREN condition RPAREN LBRACE stmt_list RBRACE
+ ;
+condition: expression
+ ;
+%%
+int main() {
+ printf("Enter your code:\n");
+ yyparse();
+ return 0;
+}
+void yyerror(const char *s) {
+ fprintf(stderr, "Syntax error: %s\n", s);
+ exit(1);
+}
+--------------------------------------------------------------------------------------------
+Step 3: Compile the Program
+1. Generate the Lex file:
+flex lexical_analyzer.l
+
+2. Generate the YACC file:
+yacc -d syntax_checker.y
+
+ The -d flag generates the y.tab.h header file.
+3. Compile the generated C files:
+gcc lex.yy.c y.tab.c -o syntax_checker -ll -ly
+
+Step 4: Execute the Program
+1. Run the program:
+./syntax_checker
+
+2. Provide the input code for syntax checking. For example:
+int x;
+x = 5 + 3;
+if (x > 0) {
+ x = x - 1;
+} else {
+ x = 0;
+}
+
+Expected Output
+ If the syntax is correct:
+Syntax is correct.
+ If there’s a syntax error, the program outputs:
+Syntax error: <description>

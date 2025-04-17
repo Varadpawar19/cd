@@ -1,0 +1,119 @@
+7. : Implementing Intermediate Code Generation (ICG) using LEX and YACC
+
+icg.l 
+
+%{
+#include "y.tab.h"
+#include <stdlib.h>
+#include <string.h>
+
+extern int yylval;
+%}
+
+%option noyywrap
+
+%%
+
+[a-zA-Z][a-zA-Z0-9]* {
+    yylval = strdup(yytext);
+    return ID;
+}
+
+[0-9]+ {
+    yylval = strdup(yytext);
+    return NUMBER;
+}
+
+[+\-*/=()]{ return yytext[0]; }
+
+[ \t\n] ; // Ignore whitespace
+
+. { printf("Invalid character: %s\n", yytext); }
+
+%%
+
+-----------------------------------------------------------------------------------------------------------
+
+icg.y
+
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int tempVarCount = 1;
+
+void yyerror(const char *msg);
+int yylex();
+
+char* newTemp() {
+    char* temp = (char*)malloc(10);
+    sprintf(temp, "t%d", tempVarCount++);
+    return temp;
+}
+%}
+
+%token ID NUMBER
+
+%union {
+    char* str;
+}
+
+%type <str> expr term factor
+
+%%
+
+stmt:
+      ID '=' expr    { printf("%s = %s\n", $1, $3); }
+    ;
+
+expr:
+      expr '+' term  { char* temp = newTemp(); printf("%s = %s + %s\n", temp, $1, $3); $$ = temp; }
+    | expr '-' term  { char* temp = newTemp(); printf("%s = %s - %s\n", temp, $1, $3); $$ = temp; }
+    | term           { $$ = $1; }
+    ;
+
+term:
+      term '*' factor { char* temp = newTemp(); printf("%s = %s * %s\n", temp, $1, $3); $$ = temp; }
+    | term '/' factor { char* temp = newTemp(); printf("%s = %s / %s\n", temp, $1, $3); $$ = temp; }
+    | factor          { $$ = $1; }
+    ;
+
+factor:
+      '(' expr ')' { $$ = $2; }
+    | ID           { $$ = strdup($1); }
+    | NUMBER       { $$ = strdup($1); }
+    ;
+
+%%
+
+int main() {
+    printf("Enter an arithmetic assignment (e.g., a = b + c * d):\n");
+    yyparse();
+    return 0;
+}
+
+void yyerror(const char *msg) {
+    fprintf(stderr, "Error: %s\n", msg);
+}
+
+------------------------------------------------------------------------------------------------------------
+
+Compilation and Execution:
+1. Compile the YACC file:
+yacc -d icg.y
+2. Compile the LEX file:
+lex icg.l
+3. Compile both outputs with GCC:
+gcc lex.yy.c y.tab.c -o icg -ll -ly
+4. Run the program:
+./icg
+5. Enter an arithmetic expression like x = a + b * c and observe the intermediate code
+output.
+Expected Output Example:
+Enter an arithmetic expression:
+x = a + b * c
+t1 = b * c
+t2 = a + t1
+x = t2
+

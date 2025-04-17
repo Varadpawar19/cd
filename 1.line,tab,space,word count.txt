@@ -1,0 +1,82 @@
+1. Write a LEX program to count number of lines, tabs, spaces, words,
+characters from a given text file.
+
+wordcount.l
+
+/* LEX Program to count lines, tabs, spaces, words, and characters */
+
+%{
+#include <stdio.h>
+
+// Variables to store counts
+int line_count = 0;
+int tab_count = 0;
+int space_count = 0;
+int word_count = 0;
+int char_count = 0;
+%}
+
+%%
+
+\n                { line_count++; char_count++; }       // Match newline
+\t                { tab_count++; char_count++; }        // Match tab
+[ ]               { space_count++; char_count++; }      // Match space
+[a-zA-Z0-9]+      { word_count++; char_count += yyleng; } // Match words
+.                 { char_count++; }                     // Match other characters
+
+%%
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Usage: %s <input_file>\n", argv[0]);
+        return 1;
+    }
+
+    FILE *file = fopen(argv[1], "r");
+    if (!file) {
+        perror("Error opening file");
+        return 1;
+    }
+
+    yyin = file;   // Set input file for LEX
+    yylex();       // Start scanning
+    fclose(file);  // Close file
+
+    // Print counts
+    printf("Lines: %d\n", line_count);
+    printf("Tabs: %d\n", tab_count);
+    printf("Spaces: %d\n", space_count);
+    printf("Words: %d\n", word_count);
+    printf("Characters: %d\n", char_count);
+
+    return 0;
+}
+
+// Required by LEX
+int yywrap() {
+    return 1;
+}
+
+
+
+Steps to Execute:-
+1. Create the LEX file: Save the program as wordcount.l.
+2. Generate the C file:
+lex wordcount.l
+3. Compile the C file:
+gcc lex.yy.c -o wordcount -ll
+4. Run the Program:
+./wordcount <input_file>
+Replace <input_file> with the name of your text file.
+
+Sample Input:-
+Input File (sample.txt):
+Hello World!
+This is a sample file. With tabs, spaces, and lines.
+
+Sample Output:-
+Lines: 3
+Tabs: 1
+Spaces: 7
+Words: 10
+Characters: 54

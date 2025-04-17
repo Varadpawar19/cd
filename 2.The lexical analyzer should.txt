@@ -1,0 +1,233 @@
+2. Implement the Lexical analyzer for the given language. The lexical analyzer should
+ ignore redundant spaces, tabs and new lines. It should also ignore comments.
+ Although the syntax specification states that identifiers can be arbitrarily long, you
+ may restrict the length to some reasonable value
+
+
+lexical_analyzer.l
+
+%{
+#include <stdio.h>
+#include <stdlib.h>
+
+extern FILE *yyin;
+%}
+
+%%
+
+[ \t\n]+                   ;  // Ignore spaces, tabs, newlines
+
+"//".*                     ;  // Ignore single-line comments
+
+"/*"([^*]|\*+[^*/])*"*"+"/"    ;  // Ignore multi-line comments
+
+"int"|"float"|"char"|"if"|"else"|"while"|"return" {
+    printf("Keyword: %s\n", yytext);
+}
+
+[a-zA-Z_][a-zA-Z0-9_]{0,29} {
+    printf("Identifier: %s\n", yytext);
+}
+
+[0-9]+(\.[0-9]+)? {
+    printf("Number: %s\n", yytext);
+}
+
+"=="|"!="|"<="|">="|"="|"+"|"-"|"*"|"/"|"<"|">" {
+    printf("Operator: %s\n", yytext);
+}
+
+"(" | ")" | "{" | "}" | "[" | "]" | ";" | "," {
+    printf("Delimiter: %s\n", yytext);
+}
+
+. ; // Ignore everything else
+
+%%
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <input file>\n", argv[0]);
+        exit(1);
+    }
+
+    FILE *input_file = fopen(argv[1], "r");
+    if (!input_file) {
+        perror("Failed to open file");
+        exit(1);
+    }
+
+    yyin = input_file;
+    yylex();
+    fclose(input_file);
+
+    return 0;
+}
+
+int yywrap() {
+    return 1;
+}
+------------------------------------------------------------------------------------------------------------
+
+Step 1: Install Required Tools
+1. Install Lex/Yacc (or Flex/Bison):
+Most modern systems use flex (a free version of Lex). Use the following commands to
+install:
+• Ubuntu/Debian:
+sudo apt update
+sudo apt install flex
+• Red Hat/Fedora:
+sudo dnf install flex
+• MacOS (with Homebrew):
+brew install flex
+Step 2: Save the Lex Program
+1. Save the Lex code into a file, e.g., lexical_analyzer.l.
+Step 3: Generate the C File
+1. Run the following command to generate a C file from the Lex program:
+flex lexical_analyzer.l
+2. This creates a file named lex.yy.c.
+Step 4: Compile the Generated C File
+1. Compile the lex.yy.c file using a C compiler like gcc:
+gcc lex.yy.c -o lexical_analyzer -lfl
+• The -lfl flag links the Flex library.
+Step 5: Prepare an Input File
+1. Create a test input file, e.g., input.txt, with sample code:
+// Sample input
+int main() {
+ int a = 5;
+ float b = 10.5;
+ /* Multi-line comment
+ should be ignored */
+ if (a < b) {
+ return 1;
+ }
+}
+Step 6: Execute the Lexical Analyzer
+1. Run the program, providing the input file as an argument:
+./lexical_analyzer input.txt
+Step 7: View the Output
+1. The program will print the tokens it recognizes to the console. For the sample input, the
+output might look like:
+Keyword: int
+Identifier: main
+Delimiter: (
+Delimiter: )
+Delimiter: {
+Keyword: int
+Identifier: a
+Operator: =
+Number: 5
+Delimiter: ;
+Keyword: float
+Identifier: b
+Operator: =
+Number: 10.5
+Delimiter: ;
+Keyword: if
+Delimiter: (
+Identifier: a
+Operator: <
+Identifier: b
+Delimiter: )
+Delimiter: {
+Keyword: return
+Number: 1
+Delimiter: ;
+Delimiter: }
+Delimiter: }
+
+---------------------------------------------------------------------------------------------------------
+Explanation of the Lex Program
+
+The provided Lex program implements a lexical analyzer for a given language. Here’s a detailed
+breakdown of each section:
+
+1. Header Inclusion
+%{
+#include <stdio.h>
+#include <stdlib.h>
+%}
+
+• Purpose: Includes necessary header files.
+• stdio.h: For input and output functions like printf and fprintf.
+• stdlib.h: For functions like exit.
+• Scope: These headers are available throughout the generated C code.
+
+2. Lex Rules Section
+This section defines patterns (regular expressions) and corresponding actions.
+Ignore Whitespace and Newlines
+[ \t\n]+ ;
+• Matches one or more spaces ( ), tabs (\t), or newlines (\n).
+• Action: Do nothing, effectively ignoring these characters.
+Ignore Single-Line Comments
+\/\/.* ;
+• Matches // followed by any sequence of characters (.*).
+• Action: Do nothing, effectively skipping single-line comments.
+Ignore Multi-Line Comments
+\/\*[^*]*\*+([^/*][^*]*\*+)*\/ ;
+• Matches multi-line comments starting with /* and ending with */.
+• Handles nested * symbols appropriately to ensure comments are correctly skipped.
+• Action: Do nothing, skipping the multi-line comment.
+Recognize Keywords
+"int"|"float"|"char"|"if"|"else"|"while"|"return" { printf("Keyword: %s\n",
+yytext); }
+• Matches specific keywords (e.g., int, float, etc.).
+• yytext: A built-in Lex variable that stores the matched string.
+• Action: Print the keyword along with the matched text.
+Recognize Identifiers
+[a-zA-Z_][a-zA-Z0-9_]{0,29} { printf("Identifier: %s\n", yytext); }
+• Matches:
+• An alphabetic character or underscore ([a-zA-Z_]) as the first character.
+• Followed by up to 29 alphanumeric characters or underscores ([a-zA-Z0-9_]).
+• Restriction: Limits the length of identifiers to 30 characters.
+• Action: Print "Identifier" and the matched text.
+Recognize Numbers
+[0-9]+(\.[0-9]+)? { printf("Number: %s\n", yytext); }
+• Matches:
+• Integer numbers ([0-9]+).
+• Optional floating-point numbers ((\.[0-9]+)?).
+• Action: Print "Number" and the matched text.
+Recognize Operators
+\+|\-|\*|\/|\=|\<|\>|\<=|\>=|\!= { printf("Operator: %s\n", yytext); }
+• Matches common operators: +, -, *, /, =, <, >, <=, >=, !=.
+• Action: Print "Operator" and the matched text.
+Recognize Delimiters
+\(|\)|\{|\}|\[|\]|\;|\, { printf("Delimiter: %s\n", yytext); }
+• Matches delimiters: parentheses (), braces {}, brackets [], semicolon ;, and comma ,.
+• Action: Print "Delimiter" and the matched text.
+
+3. Main Function
+int main(int argc, char **argv) {
+ if (argc < 2) {
+ fprintf(stderr, "Usage: %s <input file>\n", argv[0]);
+ exit(1);
+ }
+ FILE *input_file = fopen(argv[1], "r");
+ if (!input_file) {
+ perror("Failed to open file");
+ exit(1);
+ }
+ yyin = input_file;
+ yylex();
+ fclose(input_file);
+ return 0;
+}
+
+• Purpose: Handles file input and initiates lexical analysis.
+• Steps:
+1. Checks if the input file is provided as a command-line argument.
+2. Opens the input file and assigns it to yyin (a Lex-specific variable for input
+streams).
+3. Calls yylex(), the Lex-generated function that performs tokenization based on the
+rules defined.
+4. Closes the input file after lexical analysis.
+4. Lex Workflow
+1. Input Stream:
+• Reads the input file character by character.
+• Matches each part of the input against the regular expressions.
+2. Token Recognition:
+• Identifies and categorizes tokens like keywords, identifiers, numbers, operators, and
+delimiters.
+• Skips irrelevant elements like whitespace and comments.
+3. Output:
+• Prints categorized tokens to the console. 

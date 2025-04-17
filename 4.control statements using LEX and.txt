@@ -1,0 +1,136 @@
+4. Write a program for syntax checking of control statements using LEX and YACC.
+
+control.l
+
+%{
+#include "y.tab.h" // Include the YACC-generated header
+%}
+
+%%
+
+// Keywords
+"if"            { return IF; }
+"else"          { return ELSE; }
+"while"         { return WHILE; }
+"for"           { return FOR; }
+
+// Symbols
+"("             { return LPAREN; }
+")"             { return RPAREN; }
+"{"             { return LBRACE; }
+"}"             { return RBRACE; }
+";"             { return SEMICOLON; }
+"="             { return ASSIGN; }
+
+// Relational operators
+"<" | ">" | "==" | "!=" | "<=" | ">="    { return RELOP; }
+
+// Arithmetic operators
+"+" | "-" | "*" | "/"                    { return OP; }
+
+// Identifiers
+[a-zA-Z_][a-zA-Z0-9_]*                   { return ID; }
+
+// Numbers
+[0-9]+                                   { return NUM; }
+
+// Ignore whitespace
+[ \t\n]+                                 { /* skip */ }
+
+// Catch-all for any unmatched character
+.                                        { return yytext[0]; }
+
+%%
+
+int yywrap() {
+    return 1;
+}
+----------------------------------------------------------------------------------------------------------
+control.y
+
+%{
+#include <stdio.h>
+#include <stdlib.h>
+void yyerror(const char *s); // Function to handle syntax errors
+int yylex(); // Function prototype for lexical analyzer
+%}
+
+/* Token definitions */
+%token IF ELSE WHILE FOR
+%token LPAREN RPAREN LBRACE RBRACE SEMICOLON ASSIGN
+%token RELOP OP ID NUM
+
+%%
+
+program:
+    statement_list
+;
+
+statement_list:
+    statement_list statement
+    | statement
+;
+
+statement:
+    selection_statement
+    | iteration_statement
+    | expression SEMICOLON
+;
+
+selection_statement:
+    IF LPAREN condition RPAREN LBRACE statement_list RBRACE
+    | IF LPAREN condition RPAREN LBRACE statement_list RBRACE ELSE LBRACE statement_list RBRACE
+;
+
+iteration_statement:
+    WHILE LPAREN condition RPAREN LBRACE statement_list RBRACE
+    | FOR LPAREN expression SEMICOLON condition SEMICOLON expression RPAREN LBRACE statement_list RBRACE
+;
+
+condition:
+    ID RELOP ID
+    | ID RELOP NUM
+    | NUM RELOP ID
+    | NUM RELOP NUM
+;
+
+expression:
+    ID ASSIGN expression
+    | ID OP expression
+    | NUM
+    | ID
+;
+
+%%
+
+void yyerror(const char *s) {
+    printf("Syntax Error: %s\n", s);
+}
+
+int main() {
+    printf("Enter a control statement to check syntax:\n");
+    yyparse(); // Start parsing
+    printf("Syntax is correct!\n");
+    return 0;
+}
+
+
+------------------------------------------------------------------------------------------------------------Steps to Execute
+1. Write the LEX program (control.l) to recognize tokens.
+2. Write the YACC program (control.y) to define syntax rules.
+3. Compile the YACC file using:
+yacc -d control.y
+This generates y.tab.c and y.tab.h.
+ 4. Compile the LEX file using:
+lex control.l
+ This generates lex.yy.c.
+ 5. Compile both C files together using:
+gcc lex.yy.c y.tab.c -o syntax_checker
+6. Run the program using:
+./syntax_checker
+7. Enter different control statements to check their syntax.
+Input: if (a < b) { x = y + 2; }
+Output: Enter a control statement to check syntax:
+Syntax is correct!
+Input: while (5 <) { y = 3; }
+Output: Syntax Error: syntax error
